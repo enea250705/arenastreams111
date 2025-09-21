@@ -208,21 +208,35 @@
 
     <!-- NFL Sunday Notice Banner -->
     <div class="bg-gradient-to-r from-red-600 to-red-700 border-b border-red-500">
-        <div class="container mx-auto px-4 py-4">
-            <div class="flex items-center justify-center space-x-3">
+        <div class="container mx-auto px-4 py-3">
+            <!-- Mobile Layout -->
+            <div class="md:hidden text-center">
+                <div class="flex items-center justify-center space-x-2 mb-2">
+                    <span class="text-xl">🏈</span>
+                    <span class="text-white font-bold text-base">NFL Sunday Notice</span>
+                </div>
+                <p class="text-white text-sm font-semibold mb-1">
+                    NFL Sunday had delays due to high traffic.
+                </p>
+                <p class="text-red-200 text-xs">
+                    We're creating mirrors to fix this.
+                </p>
+            </div>
+            
+            <!-- Desktop Layout -->
+            <div class="hidden md:flex items-center justify-center space-x-3">
                 <div class="flex items-center space-x-2">
                     <span class="text-2xl">🏈</span>
                     <span class="text-white font-bold text-lg">NFL Sunday Notice</span>
                 </div>
-                <div class="hidden md:block w-px h-6 bg-red-400"></div>
-                <div class="text-center md:text-left">
-                    <p class="text-white text-sm md:text-base">
+                <div class="w-px h-6 bg-red-400"></div>
+                <div class="text-left">
+                    <p class="text-white text-base">
                         <span class="font-semibold">NFL Sunday had delays due to high traffic.</span>
-                        <span class="hidden md:inline"> We're sorry for the inconvenience and are working to resolve this by creating additional mirrors.</span>
+                        <span> We're sorry for the inconvenience and are working to resolve this by creating additional mirrors.</span>
                     </p>
-                    <p class="text-red-200 text-xs md:text-sm mt-1">
-                        <span class="md:hidden">We're creating mirrors to fix this.</span>
-                        <span class="hidden md:inline">Thank you for your patience as we improve our infrastructure.</span>
+                    <p class="text-red-200 text-sm mt-1">
+                        Thank you for your patience as we improve our infrastructure.
                     </p>
                 </div>
             </div>
