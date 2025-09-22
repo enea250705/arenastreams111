@@ -591,12 +591,6 @@ app.get('/match/:slug', async (req, res) => {
             return true;
           }
           
-          // Skip events (titles without " vs ") - these should go to /event route
-          if (match.id && !match.title.includes(' vs ')) {
-            console.log(`🔍 Skipping event "${match.title}" - should use /event route`);
-            return false;
-          }
-          
           // For motor sports and NFL channel matches, use the Streamed.pk ID as the slug directly
           if ((sport === 'motor-sports' || sport === 'american-football') && match.id && !match.title.includes(' vs ')) {
             console.log(`🔍 Checking ${sport} channel match "${match.title}": matchId="${match.id}" vs requestedSlug="${slug}"`);
@@ -644,52 +638,6 @@ app.get('/match/:slug', async (req, res) => {
           }
           return false;
         });
-        
-        // If no match found, check if it's an event that should be redirected
-        if (!foundMatch) {
-          // Extract potential event ID from malformed slug
-          let potentialEventId = slug;
-          
-          // Handle malformed slugs like "ballon-d-or-2025-vs-vs-opponent-live-2025-09-22"
-          if (slug.includes('-vs-vs-')) {
-            potentialEventId = slug.split('-vs-vs-')[0];
-            console.log(`🔍 Extracted potential event ID from malformed slug: ${potentialEventId}`);
-          } else if (slug.includes('-vs-') && !slug.includes('live-')) {
-            // Handle other malformed patterns
-            const parts = slug.split('-vs-');
-            if (parts.length > 0) {
-              potentialEventId = parts[0];
-              console.log(`🔍 Extracted potential event ID from malformed slug: ${potentialEventId}`);
-            }
-          }
-          
-          // Check if this slug or extracted ID matches any event ID across all sports
-          for (const checkSport of sports) {
-            try {
-              const checkResponse = await axios.get(`${STREAMED_API_BASE}/matches/${checkSport}`, {
-                timeout: 10000
-              });
-              
-              let checkMatches = [];
-              if (Array.isArray(checkResponse.data)) {
-                checkMatches = checkResponse.data;
-              } else if (checkResponse.data && Array.isArray(checkResponse.data.matches)) {
-                checkMatches = checkResponse.data.matches;
-              }
-              
-              // Check both original slug and extracted event ID
-              const eventMatch = checkMatches.find(match => 
-                (match.id === slug || match.id === potentialEventId) && !match.title.includes(' vs ')
-              );
-              if (eventMatch) {
-                console.log(`🔄 Auto-redirecting event "${eventMatch.title}" to /event route`);
-                return res.redirect(`/event/${eventMatch.id}`);
-              }
-            } catch (error) {
-              console.log(`Error checking ${checkSport} for event redirect: ${error.message}`);
-            }
-          }
-        }
         
         if (foundMatch) {
           console.log(`✅ Found match: ${foundMatch.title} (${foundMatch.id})`);
@@ -876,130 +824,6 @@ app.get('/match/:slug', async (req, res) => {
     res.send(html);
   } catch (error) {
     console.error('Error rendering match page:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
-
-// Event page route - for non-match content like awards, ceremonies, etc.
-app.get('/event/:slug', async (req, res) => {
-  try {
-    // Track clean visit (no AdBlock)
-    trackAdblockVisit(false);
-    
-    const { slug } = req.params;
-    
-    // Try to find the event by searching through all sports
-    let eventData = null;
-    const sports = ['football', 'basketball', 'tennis', 'ufc', 'rugby', 'baseball', 'american-football', 'cricket', 'motor-sports', 'hockey'];
-    
-    console.log(`🔍 Searching for event with slug: ${slug}`);
-    console.log(`🔍 Searching in sports: ${sports.join(', ')}`);
-    
-    for (const sport of sports) {
-      try {
-        const response = await axios.get(`${STREAMED_API_BASE}/matches/${sport}`, {
-          timeout: 10000
-        });
-        
-        let matches = [];
-        if (Array.isArray(response.data)) {
-          matches = response.data;
-        } else if (response.data.value && Array.isArray(response.data.value)) {
-          matches = response.data.value;
-        }
-        
-        console.log(`🔍 ${sport}: found ${matches.length} matches`);
-        
-        // Look for events (titles without " vs " or specific event patterns)
-        const foundEvent = matches.find(match => {
-          // Try direct ID match first
-          if (match.id === slug) {
-            console.log(`✅ Direct ID event found: ${match.id}`);
-            return true;
-          }
-          
-          // For events, use the Streamed.pk ID as the slug directly
-          if (match.id && !match.title.includes(' vs ')) {
-            console.log(`🔍 Checking ${sport} event "${match.title}": matchId="${match.id}" vs requestedSlug="${slug}"`);
-            if (match.id === slug) {
-              console.log(`✅ ${sport} event found by ID: ${match.id}`);
-              return true;
-            }
-            return false;
-          }
-          
-          return false;
-        });
-        
-        if (foundEvent) {
-          eventData = { ...foundEvent, sport };
-          break;
-        }
-      } catch (error) {
-        console.log(`No events found for ${sport}`);
-      }
-    }
-    
-    if (!eventData) {
-      console.log(`❌ No event found for slug: ${slug}`);
-      return res.status(404).send('Event not found');
-    }
-    
-    console.log(`✅ Found event data:`, eventData);
-    
-    // Fetch detailed streams for the event
-    if (eventData.sources && eventData.sources.length > 0) {
-      console.log(`🔄 Fetching detailed streams for ${eventData.sport} event: ${eventData.id}`);
-      try {
-        const streamListResponse = await axios.get(`${STREAMED_API_BASE}/stream/embed/${eventData.id}`, {
-          timeout: 10000
-        });
-        
-        if (streamListResponse.data && streamListResponse.data.length > 0) {
-          // Process streams sequentially to avoid async issues
-          eventData.sources = [];
-          for (const streamRef of streamListResponse.data) {
-            try {
-              const streamDetailResponse = await axios.get(`${STREAMED_API_BASE}/stream/${streamRef.source}/${streamRef.id}`, {
-                timeout: 10000
-              });
-              eventData.sources.push({
-                ...streamRef,
-                streams: streamDetailResponse.data
-              });
-            } catch (error) {
-              console.log(`Error fetching stream details for ${streamRef.source}/${streamRef.id}: ${error.message}`);
-            }
-          }
-          console.log(`✅ Found ${eventData.sources.length} detailed streams for ${eventData.sport} event`);
-        }
-      } catch (error) {
-        console.log(`Error fetching detailed streams for event: ${error.message}`);
-      }
-    }
-    
-    // Apply server overrides if exist from Supabase
-    try {
-      const { getSupabaseClient } = require('./lib/supabase');
-      const supabase = getSupabaseClient();
-      const { data: override } = await supabase.from('overrides').select('embed_urls').eq('slug', slug).single();
-      if (override && Array.isArray(override.embed_urls) && override.embed_urls.length > 0) {
-        eventData.embedUrls = override.embed_urls;
-        console.log(`✅ Applied ${override.embed_urls.length} override server(s) for slug ${slug}`);
-      }
-    } catch (e) {
-      console.log('Overrides lookup failed:', e.message);
-    }
-    
-    console.log(`📊 Rendering event page for: ${eventData.title}`);
-    
-    const html = await renderTemplate('event', {
-      event: eventData
-    });
-    
-    res.send(html);
-  } catch (error) {
-    console.error('Error rendering event page:', error);
     res.status(500).send('Internal Server Error');
   }
 });
@@ -1524,52 +1348,6 @@ app.get('/matchadblock/:slug', async (req, res) => {
           }
           return false;
         });
-        
-        // If no match found, check if it's an event that should be redirected
-        if (!foundMatch) {
-          // Extract potential event ID from malformed slug
-          let potentialEventId = slug;
-          
-          // Handle malformed slugs like "ballon-d-or-2025-vs-vs-opponent-live-2025-09-22"
-          if (slug.includes('-vs-vs-')) {
-            potentialEventId = slug.split('-vs-vs-')[0];
-            console.log(`🔍 AdBlock: Extracted potential event ID from malformed slug: ${potentialEventId}`);
-          } else if (slug.includes('-vs-') && !slug.includes('live-')) {
-            // Handle other malformed patterns
-            const parts = slug.split('-vs-');
-            if (parts.length > 0) {
-              potentialEventId = parts[0];
-              console.log(`🔍 AdBlock: Extracted potential event ID from malformed slug: ${potentialEventId}`);
-            }
-          }
-          
-          // Check if this slug or extracted ID matches any event ID across all sports
-          for (const checkSport of sports) {
-            try {
-              const checkResponse = await axios.get(`${STREAMED_API_BASE}/matches/${checkSport}`, {
-                timeout: 10000
-              });
-              
-              let checkMatches = [];
-              if (Array.isArray(checkResponse.data)) {
-                checkMatches = checkResponse.data;
-              } else if (checkResponse.data && Array.isArray(checkResponse.data.matches)) {
-                checkMatches = checkResponse.data.matches;
-              }
-              
-              // Check both original slug and extracted event ID
-              const eventMatch = checkMatches.find(match => 
-                (match.id === slug || match.id === potentialEventId) && !match.title.includes(' vs ')
-              );
-              if (eventMatch) {
-                console.log(`🔄 AdBlock: Auto-redirecting event "${eventMatch.title}" to /event route`);
-                return res.redirect(`/event/${eventMatch.id}`);
-              }
-            } catch (error) {
-              console.log(`Error checking ${checkSport} for event redirect: ${error.message}`);
-            }
-          }
-        }
         
         if (foundMatch) {
           matchData = { ...foundMatch, sport };
