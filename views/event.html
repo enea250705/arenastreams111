@@ -239,8 +239,11 @@
                 console.log('🎬 Starting stream load...');
 
                 try {
-                    // Load real streams from Streamed.pk
-                    await loadRealStreams();
+                    // Ensure streams are loaded
+                    if (!window.event.embedUrls || window.event.embedUrls.length === 0) {
+                        console.log('🔄 No streams loaded yet, loading now...');
+                        await loadRealStreams();
+                    }
 
                     const streams = window.event.embedUrls || [];
                     console.log('📺 Available streams:', streams);
@@ -481,7 +484,11 @@
             setTimeout(() => {
                 console.log('🚀 Auto-loading streams on page load...');
                 loadRealStreams();
-            }, 2000); // Wait 2 seconds for page to fully load
+            }, 1000); // Wait 1 second for page to fully load
+            
+            // Also load streams immediately on page load
+            console.log('🚀 Loading streams immediately...');
+            loadRealStreams();
         });
     </script>
 </body>
