@@ -243,6 +243,16 @@
                     if (!window.event.embedUrls || window.event.embedUrls.length === 0) {
                         console.log('🔄 No streams loaded yet, loading now...');
                         await loadRealStreams();
+                        
+                        // Check again after loading
+                        if (!window.event.embedUrls || window.event.embedUrls.length === 0) {
+                            console.log('⚠️ Still no streams after loading, using fallback...');
+                            // Use fallback streams
+                            window.event.embedUrls = [
+                                'https://embedsports.top/embed/alpha/ballon-d-or-2025/1',
+                                'https://embedsports.top/embed/alpha/ballon-d-or-2025/2'
+                            ];
+                        }
                     }
 
                     const streams = window.event.embedUrls || [];
@@ -489,6 +499,12 @@
             // Also load streams immediately on page load
             console.log('🚀 Loading streams immediately...');
             loadRealStreams();
+            
+            // Ensure streams are loaded before play button is clicked
+            window.addEventListener('load', function() {
+                console.log('🚀 Page fully loaded, ensuring streams are ready...');
+                loadRealStreams();
+            });
         });
     </script>
 </body>
