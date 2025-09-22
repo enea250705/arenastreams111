@@ -645,6 +645,33 @@ app.get('/match/:slug', async (req, res) => {
           return false;
         });
         
+        // If no match found, check if it's an event that should be redirected
+        if (!foundMatch) {
+          // Check if this slug matches any event ID across all sports
+          for (const checkSport of sports) {
+            try {
+              const checkResponse = await axios.get(`${STREAMED_API_BASE}/matches/${checkSport}`, {
+                timeout: 10000
+              });
+              
+              let checkMatches = [];
+              if (Array.isArray(checkResponse.data)) {
+                checkMatches = checkResponse.data;
+              } else if (checkResponse.data && Array.isArray(checkResponse.data.matches)) {
+                checkMatches = checkResponse.data.matches;
+              }
+              
+              const eventMatch = checkMatches.find(match => match.id === slug && !match.title.includes(' vs '));
+              if (eventMatch) {
+                console.log(`🔄 Auto-redirecting event "${eventMatch.title}" to /event route`);
+                return res.redirect(`/event/${slug}`);
+              }
+            } catch (error) {
+              console.log(`Error checking ${checkSport} for event redirect: ${error.message}`);
+            }
+          }
+        }
+        
         if (foundMatch) {
           console.log(`✅ Found match: ${foundMatch.title} (${foundMatch.id})`);
           console.log(`📊 Match sources:`, foundMatch.sources ? `${foundMatch.sources.length} sources` : 'No sources');
@@ -1478,6 +1505,33 @@ app.get('/matchadblock/:slug', async (req, res) => {
           }
           return false;
         });
+        
+        // If no match found, check if it's an event that should be redirected
+        if (!foundMatch) {
+          // Check if this slug matches any event ID across all sports
+          for (const checkSport of sports) {
+            try {
+              const checkResponse = await axios.get(`${STREAMED_API_BASE}/matches/${checkSport}`, {
+                timeout: 10000
+              });
+              
+              let checkMatches = [];
+              if (Array.isArray(checkResponse.data)) {
+                checkMatches = checkResponse.data;
+              } else if (checkResponse.data && Array.isArray(checkResponse.data.matches)) {
+                checkMatches = checkResponse.data.matches;
+              }
+              
+              const eventMatch = checkMatches.find(match => match.id === slug && !match.title.includes(' vs '));
+              if (eventMatch) {
+                console.log(`🔄 AdBlock: Auto-redirecting event "${eventMatch.title}" to /event route`);
+                return res.redirect(`/event/${slug}`);
+              }
+            } catch (error) {
+              console.log(`Error checking ${checkSport} for event redirect: ${error.message}`);
+            }
+          }
+        }
         
         if (foundMatch) {
           matchData = { ...foundMatch, sport };
