@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{event.title}} Live Stream | ArenaStreams</title>
+    <meta name="description" content="Watch {{event.title}} live stream online free. HD quality streaming with multiple players available.">
+    <meta name="keywords" content="{{event.title}}, live stream, online streaming">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://arenastreams.com/event/{{event.id}}">
+    
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#ffcc00',
+                        dark: '#1a1a1a',
+                        darker: '#0f0f0f'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark text-white">
+    <!-- Header -->
+    <header class="bg-darker border-b border-gray-800">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-2xl font-bold text-primary">ArenaStreams</a>
+                </div>
+                <nav class="hidden md:flex space-x-6">
+                    <a href="/" class="text-gray-300 hover:text-white">Home</a>
+                    <a href="/football" class="text-gray-300 hover:text-white">⚽ Football</a>
+                    <a href="/basketball" class="text-gray-300 hover:text-white">🏀 Basketball</a>
+                    <a href="/tennis" class="text-gray-300 hover:text-white">🎾 Tennis</a>
+                    <a href="/ufc" class="text-gray-300 hover:text-white">🥊 UFC</a>
+                    <a href="/rugby" class="text-gray-300 hover:text-white">🏉 Rugby</a>
+                    <a href="/baseball" class="text-gray-300 hover:text-white">⚾ Baseball</a>
+                </nav>
+                <button id="mobile-menu-btn" class="md:hidden text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="md:hidden bg-darker border-b border-gray-800 hidden">
+        <div class="container mx-auto px-4 py-4">
+            <nav class="flex flex-col space-y-4">
+                <a href="/" class="text-gray-300 hover:text-white">Home</a>
+                <a href="/football" class="text-gray-300 hover:text-white">⚽ Football</a>
+                <a href="/basketball" class="text-gray-300 hover:text-white">🏀 Basketball</a>
+                <a href="/tennis" class="text-gray-300 hover:text-white">🎾 Tennis</a>
+                <a href="/ufc" class="text-gray-300 hover:text-white">🥊 UFC</a>
+                <a href="/rugby" class="text-gray-300 hover:text-white">🏉 Rugby</a>
+                <a href="/baseball" class="text-gray-300 hover:text-white">⚾ Baseball</a>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Event Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">{{event.title}}</h1>
+            <p class="text-gray-400 text-lg">{{event.category}} • {{event.date}}</p>
+        </div>
+
+        <!-- Stream Player -->
+        <div class="bg-darker rounded-lg p-6 mb-8">
+            <div id="player-container" class="relative">
+                <div id="stream-placeholder" class="flex items-center justify-center h-96 bg-black rounded-lg">
+                    <div class="text-center">
+                        <div class="text-6xl text-primary mb-4">📺</div>
+                        <p class="text-gray-400 mb-4">Event streams loading...</p>
+                        <button id="play-btn" class="bg-primary text-dark font-bold py-3 px-8 rounded-lg hover:bg-yellow-400 transition-colors text-lg">
+                            ▶️ Play Stream
+                        </button>
+                    </div>
+                </div>
+                <iframe id="stream-player" class="w-full h-96 rounded-lg hidden" frameborder="0" allowfullscreen></iframe>
+            </div>
+        </div>
+
+        <!-- Server Tabs -->
+        <div class="mb-6">
+            <div id="player-tabs-container" class="flex flex-wrap justify-center gap-2">
+                <!-- Server tabs will be generated here -->
+            </div>
+        </div>
+
+        <!-- Event Info -->
+        <div class="bg-darker rounded-lg p-6">
+            <h2 class="text-2xl font-bold mb-4">Event Information</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h3 class="font-semibold text-primary mb-2">Event</h3>
+                    <p class="text-gray-300">{{event.title}}</p>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-primary mb-2">Category</h3>
+                    <p class="text-gray-300">{{event.category}}</p>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-primary mb-2">Date</h3>
+                    <p class="text-gray-300">{{event.date}}</p>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-primary mb-2">Status</h3>
+                    <p class="text-gray-300">{{event.status}}</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-darker border-t border-gray-800 py-8 mt-12">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-400">&copy; 2025 ArenaStreams. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Event data from server
+        let eventData;
+        try {
+            eventData = JSON.parse('{{json event}}');
+        } catch (error) {
+            console.error('❌ JSON parsing error:', error);
+            eventData = {
+                id: 'default-event',
+                title: 'Event',
+                category: 'Event',
+                date: new Date().toISOString(),
+                sources: []
+            };
+        }
+
+        // Make event data available globally
+        window.event = eventData || {
+            id: 'default-event',
+            title: 'Event',
+            category: 'Event',
+            date: new Date().toISOString(),
+            sources: []
+        };
+
+        console.log('📊 Event data loaded:', window.event);
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const playBtn = document.getElementById('play-btn');
+            const playerContainer = document.getElementById('player-container');
+            const streamPlayer = document.getElementById('stream-player');
+            const streamPlaceholder = document.getElementById('stream-placeholder');
+
+            let currentPlayer = 1;
+            let isStreamPlaying = false;
+            let hasPlayedBefore = false;
+
+            // Mobile menu functionality
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            if (mobileMenuBtn && mobileMenu) {
+                mobileMenuBtn.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+
+            // Play button functionality
+            playBtn.addEventListener('click', function() {
+                console.log('🎬 Play button clicked');
+
+                if (!hasPlayedBefore) {
+                    // First click: Show overlay + trigger 3 popups
+                    console.log('🎬 First click - triggering 3 popups');
+                    triggerPopups(3);
+
+                    // Show overlay message
+                    streamPlaceholder.innerHTML = `
+                        <div class="text-center">
+                            <div class="text-6xl text-gray-600 mb-4">⏸️</div>
+                            <p class="text-gray-400 mb-4">Click Resume to continue</p>
+                            <button id="resume-btn" class="bg-primary text-dark font-bold py-3 px-8 rounded-lg hover:bg-yellow-400 transition-colors text-lg">
+                                ▶️ Resume Stream
+                            </button>
+                        </div>
+                    `;
+
+                    hasPlayedBefore = true;
+
+                    // Add resume button event listener
+                    document.getElementById('resume-btn').addEventListener('click', function() {
+                        console.log('🎬 Resume button clicked - triggering 2 popups');
+                        triggerPopups(2);
+                        startStream();
+                    });
+
+                } else {
+                    startStream();
+                }
+            });
+
+            function startStream() {
+                console.log('🚀 Starting stream...');
+
+                // Load and show stream
+                loadStream().then(() => {
+                    // Hide placeholder, show player
+                    streamPlaceholder.style.display = 'none';
+                    streamPlayer.classList.remove('hidden');
+                    isStreamPlaying = true;
+
+                    console.log('✅ Stream started successfully');
+                }).catch(error => {
+                    console.error('❌ Error starting stream:', error);
+                    // Show error message
+                    streamPlaceholder.innerHTML = `
+                        <div class="text-center">
+                            <div class="text-6xl text-red-500 mb-4">❌</div>
+                            <p class="text-red-400 mb-4">Stream failed to load</p>
+                            <button onclick="location.reload()" class="bg-red-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-red-700 transition-colors text-lg">
+                                🔄 Retry
+                            </button>
+                        </div>
+                    `;
+                });
+            }
+
+            async function loadStream() {
+                console.log('🎬 Starting stream load...');
+
+                try {
+                    // Load real streams from Streamed.pk
+                    await loadRealStreams();
+
+                    const streams = window.event.embedUrls || [];
+                    console.log('📺 Available streams:', streams);
+
+                    if (streams && streams.length > 0) {
+                        let streamUrl = streams[currentPlayer - 1] || streams[0];
+                        console.log(`📺 Loading stream ${currentPlayer}: ${streamUrl}`);
+                        streamPlayer.src = streamUrl;
+                        console.log('✅ Stream loaded');
+                    } else {
+                        console.log('⚠️ No real streams available');
+                        // Show a message
+                        streamPlaceholder.innerHTML = `
+                            <div class="text-center">
+                                <div class="text-6xl text-yellow-500 mb-4">📺</div>
+                                <p class="text-gray-400 mb-4">Event streams loading...</p>
+                                <p class="text-gray-500 text-sm">Event: ${window.event?.title}</p>
+                                <p class="text-gray-500 text-sm">Sources: ${window.event?.sources?.length || 0}</p>
+                                <button onclick="location.reload()" class="bg-primary text-dark font-bold py-2 px-4 rounded-lg hover:bg-yellow-400 transition-colors mt-4">
+                                    🔄 Retry Loading Streams
+                                </button>
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    console.error('❌ Error in loadStream:', error);
+                }
+            }
+
+            // Load real streams from Streamed.pk
+            async function loadRealStreams() {
+                try {
+                    if (window.event && window.event.sources && window.event.sources.length > 0) {
+                        console.log('🔄 Loading real streams from Streamed.pk...');
+                        console.log(`📡 Found ${window.event.sources.length} sources:`, window.event.sources);
+                        
+                        const allStreams = [];
+                        
+                        // Fetch streams from ALL sources
+                        for (const source of window.event.sources) {
+                            try {
+                                console.log(`📡 Fetching stream for source: ${source.source}, id: ${source.id}`);
+                                const response = await fetch(`/api/streamed/stream/${source.source}/${source.id}`);
+                                
+                                if (!response.ok) {
+                                    console.error(`❌ Failed to fetch streams for source ${source.source}: ${response.status}`);
+                                    continue;
+                                }
+                                
+                                const data = await response.json();
+                                console.log(`📊 Stream API response for ${source.source}:`, data);
+
+                                // Handle different API response formats
+                                let streams = [];
+                                
+                                if (Array.isArray(data) && data.length > 0) {
+                                    // Direct array response (most common)
+                                    streams = data;
+                                    console.log(`✅ Found ${streams.length} streams in direct array format`);
+                                } else if (data.value && Array.isArray(data.value) && data.value.length > 0) {
+                                    // Wrapped in 'value' array
+                                    streams = data.value;
+                                    console.log(`✅ Found ${streams.length} streams in 'value' format`);
+                                } else if (data.streams && Array.isArray(data.streams) && data.streams.length > 0) {
+                                    // Wrapped in 'streams' array
+                                    streams = data.streams;
+                                    console.log(`✅ Found ${streams.length} streams in 'streams' format`);
+                                } else {
+                                    console.log(`⚠️ No streams found for source ${source.source}. Response format:`, typeof data, data);
+                                }
+                                
+                                if (streams.length > 0) {
+                                    const sourceStreams = streams.map(stream => ({
+                                        ...stream,
+                                        source: source.source
+                                    }));
+                                    allStreams.push(...sourceStreams);
+                                    console.log(`✅ Added ${sourceStreams.length} streams from ${source.source}`);
+                                }
+                            } catch (error) {
+                                console.error(`❌ Error fetching streams from ${source.source}:`, error);
+                            }
+                        }
+                        
+                        // Limit to 10 streams maximum
+                        const limitedStreams = allStreams.slice(0, 10);
+                        window.event.embedUrls = limitedStreams.map(stream => stream.embedUrl).filter(Boolean);
+
+                        console.log(`📺 Total loaded ${limitedStreams.length} real streams from ${window.event.sources.length} sources:`, window.event.embedUrls);
+
+                        // Generate player tabs dynamically based on actual stream count
+                        generatePlayerTabs(limitedStreams.length);
+
+                    } else {
+                        console.log('⚠️ No event sources available, using 10 default streams');
+                        // Generate 10 default player tabs with fallback streams
+                        generatePlayerTabs(10);
+
+                        // Create 10 fallback embed URLs
+                        window.event.embedUrls = [
+                            'https://streamed.pk/embed/1',
+                            'https://streamed.pk/embed/2',
+                            'https://streamed.pk/embed/3',
+                            'https://streamed.pk/embed/4',
+                            'https://streamed.pk/embed/5',
+                            'https://streamed.pk/embed/6',
+                            'https://streamed.pk/embed/7',
+                            'https://streamed.pk/embed/8',
+                            'https://streamed.pk/embed/9',
+                            'https://streamed.pk/embed/10'
+                        ];
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to load real streams:', error);
+                    // Generate 10 default player tabs on error
+                    generatePlayerTabs(10);
+
+                    // Create 10 fallback embed URLs for error case
+                    window.event.embedUrls = [
+                        'https://streamed.pk/embed/1',
+                        'https://streamed.pk/embed/2',
+                        'https://streamed.pk/embed/3',
+                        'https://streamed.pk/embed/4',
+                        'https://streamed.pk/embed/5',
+                        'https://streamed.pk/embed/6',
+                        'https://streamed.pk/embed/7',
+                        'https://streamed.pk/embed/8',
+                        'https://streamed.pk/embed/9',
+                        'https://streamed.pk/embed/10'
+                    ];
+                }
+            }
+
+            // Generate player tabs dynamically based on number of streams
+            function generatePlayerTabs(streamCount, forceRegenerate = false) {
+                const container = document.getElementById('player-tabs-container');
+                if (!container) {
+                    console.log('❌ Player tabs container not found');
+                    return;
+                }
+
+                // Don't regenerate if tabs already exist and we're not forcing it
+                if (!forceRegenerate && container.children.length > 0) {
+                    console.log(`🎮 Tabs already exist (${container.children.length}), skipping regeneration`);
+                    return;
+                }
+
+                const count = Math.min(10, streamCount || 0);
+                container.innerHTML = '';
+                console.log(`🎮 Generating ${count} player tabs...`);
+
+                for (let i = 1; i <= count; i++) {
+                    const tab = document.createElement('button');
+                    const isActive = i === 1;
+                    // Mobile-friendly button styling with responsive classes
+                    tab.className = `player-tab px-2 py-1 sm:px-4 sm:py-2 mx-1 sm:mx-2 rounded-lg font-semibold transition-all duration-300 text-xs sm:text-sm ${isActive ? 'bg-primary text-dark shadow-lg transform scale-105' : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'}`;
+                    tab.dataset.player = i;
+                    tab.textContent = `S${i}`; // Shorter text for mobile
+                    container.appendChild(tab);
+                    
+                    console.log(`✅ Created Server ${i} button${isActive ? ' (active)' : ''}`);
+                }
+
+                console.log(`🎮 Generated ${streamCount} player tabs successfully`);
+            }
+
+            // Popup ads function
+            window.triggerPopups = function triggerPopups(count) {
+                console.log(`🚀 Triggering ${count} popup ads`);
+                for (let i = 0; i < count; i++) {
+                    setTimeout(() => {
+                        const popup = window.open('', '_blank', 'width=1,height=1');
+                        if (popup) {
+                            popup.document.write(`
+                                <html>
+                                    <head><title>Loading...</title></head>
+                                    <body style="margin:0;padding:0;background:#000;">
+                                        <script>window.location.href='https://google.com';</script>
+                                    </body>
+                                </html>
+                            `);
+                        }
+                    }, i * 100);
+                }
+                return;
+            }
+
+            // Player tab switching (using event delegation for dynamic tabs)
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('player-tab')) {
+                    console.log('🎯 Player tab clicked:', e.target.dataset.player);
+
+                    // Update active tab
+                    const allTabs = document.querySelectorAll('.player-tab');
+                    allTabs.forEach(tab => {
+                        tab.classList.remove('bg-primary', 'text-dark', 'shadow-lg', 'scale-105');
+                        tab.classList.add('bg-gray-700', 'text-gray-300');
+                    });
+
+                    e.target.classList.remove('bg-gray-700', 'text-gray-300');
+                    e.target.classList.add('bg-primary', 'text-dark', 'shadow-lg', 'scale-105');
+
+                    // Update current player
+                    currentPlayer = parseInt(e.target.dataset.player);
+                    console.log('🔄 Switched to player:', currentPlayer);
+
+                    // Reload stream if player is visible
+                    if (!streamPlayer.classList.contains('hidden')) {
+                        console.log('🔄 Stream is visible, reloading with new player:', currentPlayer);
+                        loadStream();
+                    } else {
+                        console.log('🔄 Stream is hidden, not reloading');
+                    }
+                }
+            });
+
+            // Initialize player tabs
+            try {
+                generatePlayerTabs(10); // Default 10 tabs
+                console.log('✅ Player tabs generated successfully');
+            } catch (error) {
+                console.error('❌ Error generating player tabs:', error);
+            }
+
+            // Auto-load streams when page loads
+            setTimeout(() => {
+                console.log('🚀 Auto-loading streams on page load...');
+                loadRealStreams();
+            }, 2000); // Wait 2 seconds for page to fully load
+        });
+    </script>
+</body>
+</html>

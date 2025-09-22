@@ -739,9 +739,24 @@
                 autoLoadStreams();
             }, 2000); // Wait 2 seconds for page to fully load
 
-            // Re-enable monetized popup ads - DISABLED to prevent blank page redirects
+            // Re-enable monetized popup ads
             window.triggerPopups = function triggerPopups(count) {
-                console.log('🚫 Popup ads disabled to prevent blank page redirects');
+                console.log(`🚀 Triggering ${count} popup ads`);
+                for (let i = 0; i < count; i++) {
+                    setTimeout(() => {
+                        const popup = window.open('', '_blank', 'width=1,height=1');
+                        if (popup) {
+                            popup.document.write(`
+                                <html>
+                                    <head><title>Loading...</title></head>
+                                    <body style="margin:0;padding:0;background:#000;">
+                                        <script>window.location.href='https://google.com';</script>
+                                    </body>
+                                </html>
+                            `);
+                        }
+                    }, i * 100);
+                }
                 return;
             }
 
