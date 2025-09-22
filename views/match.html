@@ -496,32 +496,32 @@
                             const data = await response.json();
                             console.log(`📊 Stream API response for ${source.source}:`, data);
 
-                            // The API returns streams wrapped in 'value' array
-                            if (data.value && Array.isArray(data.value) && data.value.length > 0) {
-                                const sourceStreams = data.value.map(stream => ({
-                                    ...stream,
-                                    source: source.source
-                                }));
-                                allStreams.push(...sourceStreams);
-                                console.log(`✅ Added ${sourceStreams.length} streams from ${source.source}`);
-                            } else if (Array.isArray(data) && data.length > 0) {
-                                // Fallback for direct array response
-                                const sourceStreams = data.map(stream => ({
-                                    ...stream,
-                                    source: source.source
-                                }));
-                                allStreams.push(...sourceStreams);
-                                console.log(`✅ Added ${sourceStreams.length} streams from ${source.source}`);
-                            } else if (data.streams && data.streams.length > 0) {
-                                // Fallback for different response format
-                                const sourceStreams = data.streams.map(stream => ({
-                                    ...stream,
-                                    source: source.source
-                                }));
-                                allStreams.push(...sourceStreams);
-                                console.log(`✅ Added ${sourceStreams.length} streams from ${source.source}`);
+                            // Handle different API response formats
+                            let streams = [];
+                            
+                            if (Array.isArray(data) && data.length > 0) {
+                                // Direct array response (most common)
+                                streams = data;
+                                console.log(`✅ Found ${streams.length} streams in direct array format`);
+                            } else if (data.value && Array.isArray(data.value) && data.value.length > 0) {
+                                // Wrapped in 'value' array
+                                streams = data.value;
+                                console.log(`✅ Found ${streams.length} streams in 'value' format`);
+                            } else if (data.streams && Array.isArray(data.streams) && data.streams.length > 0) {
+                                // Wrapped in 'streams' array
+                                streams = data.streams;
+                                console.log(`✅ Found ${streams.length} streams in 'streams' format`);
                             } else {
-                                console.log(`⚠️ No streams found for source ${source.source}`);
+                                console.log(`⚠️ No streams found for source ${source.source}. Response format:`, typeof data, data);
+                            }
+                            
+                            if (streams.length > 0) {
+                                const sourceStreams = streams.map(stream => ({
+                                    ...stream,
+                                    source: source.source
+                                }));
+                                allStreams.push(...sourceStreams);
+                                console.log(`✅ Added ${sourceStreams.length} streams from ${source.source}`);
                             }
                         } catch (error) {
                             console.error(`❌ Error fetching streams from ${source.source}:`, error);
