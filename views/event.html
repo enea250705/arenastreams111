@@ -276,55 +276,67 @@
                     if (window.event && window.event.sources && window.event.sources.length > 0) {
                         console.log('🔄 Loading real streams from Streamed.pk...');
                         console.log(`📡 Found ${window.event.sources.length} sources:`, window.event.sources);
-                        
-                        const allStreams = [];
-                        
-                        // Fetch streams from ALL sources
-                        for (const source of window.event.sources) {
-                            try {
-                                console.log(`📡 Fetching stream for source: ${source.source}, id: ${source.id}`);
-                                const response = await fetch(`/api/streamed/stream/${source.source}/${source.id}`);
-                                
-                                if (!response.ok) {
-                                    console.error(`❌ Failed to fetch streams for source ${source.source}: ${response.status}`);
-                                    continue;
-                                }
-                                
-                                const data = await response.json();
-                                console.log(`📊 Stream API response for ${source.source}:`, data);
 
-                                // Handle different API response formats
-                                let streams = [];
+                        const allStreams = [];
+
+                        // Use pre-loaded streams from server instead of fetching again
+                        for (const source of window.event.sources) {
+                            if (source.streams && Array.isArray(source.streams)) {
+                                console.log(`📡 Using pre-loaded streams for source: ${source.source}, count: ${source.streams.length}`);
                                 
-                                if (Array.isArray(data) && data.length > 0) {
-                                    // Direct array response (most common)
-                                    streams = data;
-                                    console.log(`✅ Found ${streams.length} streams in direct array format`);
-                                } else if (data.value && Array.isArray(data.value) && data.value.length > 0) {
-                                    // Wrapped in 'value' array
-                                    streams = data.value;
-                                    console.log(`✅ Found ${streams.length} streams in 'value' format`);
-                                } else if (data.streams && Array.isArray(data.streams) && data.streams.length > 0) {
-                                    // Wrapped in 'streams' array
-                                    streams = data.streams;
-                                    console.log(`✅ Found ${streams.length} streams in 'streams' format`);
-                                } else {
-                                    console.log(`⚠️ No streams found for source ${source.source}. Response format:`, typeof data, data);
+                                const sourceStreams = source.streams.map(stream => ({
+                                    ...stream,
+                                    source: source.source
+                                }));
+                                allStreams.push(...sourceStreams);
+                                console.log(`✅ Added ${sourceStreams.length} pre-loaded streams from ${source.source}`);
+                            } else {
+                                // Fallback: fetch from API if no pre-loaded streams
+                                try {
+                                    console.log(`📡 Fetching stream for source: ${source.source}, id: ${source.id}`);
+                                    const response = await fetch(`/api/streamed/stream/${source.source}/${source.id}`);
+
+                                    if (!response.ok) {
+                                        console.error(`❌ Failed to fetch streams for source ${source.source}: ${response.status}`);
+                                        continue;
+                                    }
+
+                                    const data = await response.json();
+                                    console.log(`📊 Stream API response for ${source.source}:`, data);
+
+                                    // Handle different API response formats
+                                    let streams = [];
+
+                                    if (Array.isArray(data) && data.length > 0) {
+                                        // Direct array response (most common)
+                                        streams = data;
+                                        console.log(`✅ Found ${streams.length} streams in direct array format`);
+                                    } else if (data.value && Array.isArray(data.value) && data.value.length > 0) {
+                                        // Wrapped in 'value' array
+                                        streams = data.value;
+                                        console.log(`✅ Found ${streams.length} streams in 'value' format`);
+                                    } else if (data.streams && Array.isArray(data.streams) && data.streams.length > 0) {
+                                        // Wrapped in 'streams' array
+                                        streams = data.streams;
+                                        console.log(`✅ Found ${streams.length} streams in 'streams' format`);
+                                    } else {
+                                        console.log(`⚠️ No streams found for source ${source.source}. Response format:`, typeof data, data);
+                                    }
+
+                                    if (streams.length > 0) {
+                                        const sourceStreams = streams.map(stream => ({
+                                            ...stream,
+                                            source: source.source
+                                        }));
+                                        allStreams.push(...sourceStreams);
+                                        console.log(`✅ Added ${sourceStreams.length} streams from ${source.source}`);
+                                    }
+                                } catch (error) {
+                                    console.error(`❌ Error fetching streams from ${source.source}:`, error);
                                 }
-                                
-                                if (streams.length > 0) {
-                                    const sourceStreams = streams.map(stream => ({
-                                        ...stream,
-                                        source: source.source
-                                    }));
-                                    allStreams.push(...sourceStreams);
-                                    console.log(`✅ Added ${sourceStreams.length} streams from ${source.source}`);
-                                }
-                            } catch (error) {
-                                console.error(`❌ Error fetching streams from ${source.source}:`, error);
                             }
                         }
-                        
+
                         // Limit to 10 streams maximum
                         const limitedStreams = allStreams.slice(0, 10);
                         window.event.embedUrls = limitedStreams.map(stream => stream.embedUrl).filter(Boolean);
