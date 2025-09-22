@@ -647,7 +647,23 @@ app.get('/match/:slug', async (req, res) => {
         
         // If no match found, check if it's an event that should be redirected
         if (!foundMatch) {
-          // Check if this slug matches any event ID across all sports
+          // Extract potential event ID from malformed slug
+          let potentialEventId = slug;
+          
+          // Handle malformed slugs like "ballon-d-or-2025-vs-vs-opponent-live-2025-09-22"
+          if (slug.includes('-vs-vs-')) {
+            potentialEventId = slug.split('-vs-vs-')[0];
+            console.log(`🔍 Extracted potential event ID from malformed slug: ${potentialEventId}`);
+          } else if (slug.includes('-vs-') && !slug.includes('live-')) {
+            // Handle other malformed patterns
+            const parts = slug.split('-vs-');
+            if (parts.length > 0) {
+              potentialEventId = parts[0];
+              console.log(`🔍 Extracted potential event ID from malformed slug: ${potentialEventId}`);
+            }
+          }
+          
+          // Check if this slug or extracted ID matches any event ID across all sports
           for (const checkSport of sports) {
             try {
               const checkResponse = await axios.get(`${STREAMED_API_BASE}/matches/${checkSport}`, {
@@ -661,10 +677,13 @@ app.get('/match/:slug', async (req, res) => {
                 checkMatches = checkResponse.data.matches;
               }
               
-              const eventMatch = checkMatches.find(match => match.id === slug && !match.title.includes(' vs '));
+              // Check both original slug and extracted event ID
+              const eventMatch = checkMatches.find(match => 
+                (match.id === slug || match.id === potentialEventId) && !match.title.includes(' vs ')
+              );
               if (eventMatch) {
                 console.log(`🔄 Auto-redirecting event "${eventMatch.title}" to /event route`);
-                return res.redirect(`/event/${slug}`);
+                return res.redirect(`/event/${eventMatch.id}`);
               }
             } catch (error) {
               console.log(`Error checking ${checkSport} for event redirect: ${error.message}`);
@@ -1508,7 +1527,23 @@ app.get('/matchadblock/:slug', async (req, res) => {
         
         // If no match found, check if it's an event that should be redirected
         if (!foundMatch) {
-          // Check if this slug matches any event ID across all sports
+          // Extract potential event ID from malformed slug
+          let potentialEventId = slug;
+          
+          // Handle malformed slugs like "ballon-d-or-2025-vs-vs-opponent-live-2025-09-22"
+          if (slug.includes('-vs-vs-')) {
+            potentialEventId = slug.split('-vs-vs-')[0];
+            console.log(`🔍 AdBlock: Extracted potential event ID from malformed slug: ${potentialEventId}`);
+          } else if (slug.includes('-vs-') && !slug.includes('live-')) {
+            // Handle other malformed patterns
+            const parts = slug.split('-vs-');
+            if (parts.length > 0) {
+              potentialEventId = parts[0];
+              console.log(`🔍 AdBlock: Extracted potential event ID from malformed slug: ${potentialEventId}`);
+            }
+          }
+          
+          // Check if this slug or extracted ID matches any event ID across all sports
           for (const checkSport of sports) {
             try {
               const checkResponse = await axios.get(`${STREAMED_API_BASE}/matches/${checkSport}`, {
@@ -1522,10 +1557,13 @@ app.get('/matchadblock/:slug', async (req, res) => {
                 checkMatches = checkResponse.data.matches;
               }
               
-              const eventMatch = checkMatches.find(match => match.id === slug && !match.title.includes(' vs '));
+              // Check both original slug and extracted event ID
+              const eventMatch = checkMatches.find(match => 
+                (match.id === slug || match.id === potentialEventId) && !match.title.includes(' vs ')
+              );
               if (eventMatch) {
                 console.log(`🔄 AdBlock: Auto-redirecting event "${eventMatch.title}" to /event route`);
-                return res.redirect(`/event/${slug}`);
+                return res.redirect(`/event/${eventMatch.id}`);
               }
             } catch (error) {
               console.log(`Error checking ${checkSport} for event redirect: ${error.message}`);
