@@ -1729,5 +1729,6 @@ initializeData().then(() => {
     console.log(`⚾ Baseball: http://localhost:${PORT}/baseball`);
     console.log(`🔧 Admin: http://localhost:${PORT}/admin`);
     console.log(`📊 API: http://localhost:${PORT}/api/streamed/sports`);
+    console.log(`🌐 Auto-deployment ready for Vercel!`);
   });
 });
