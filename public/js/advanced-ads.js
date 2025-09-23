@@ -134,9 +134,9 @@
           fetchBlocked 
         });
         
-        // More aggressive detection for PC AdBlockers
-        // If any bait is blocked OR network/script is blocked, consider it AdBlock
-        const isBlocked = !!(baitBlocked || networkBlocked || scriptBlocked || fetchBlocked);
+        // More precise detection - require multiple indicators for AdBlock
+        // This prevents false positives on browsers like Chrome that don't block ads
+        const isBlocked = !!(multipleBaitBlocked || (baitBlocked && (networkBlocked || scriptBlocked)) || fetchBlocked);
         
         // Extra check: if multiple baits are blocked, definitely AdBlock
         if (multipleBaitBlocked) {
@@ -165,6 +165,12 @@
                          (window.chrome && window.chrome.runtime && window.chrome.runtime.id === 'mnojpmjdmbbfmejpflffifhclcmipmro');
           log('Brave browser detected:', isBrave);
           return isBrave;
+        },
+        // Check for Chrome browser (no built-in ad blocking)
+        () => {
+          const isChrome = navigator.userAgent.includes('Chrome') && !navigator.userAgent.includes('Brave');
+          log('Chrome browser detected:', isChrome);
+          return isChrome;
         },
         // Check for AdBlock Plus
         () => typeof window.adblockplus !== 'undefined',
@@ -270,10 +276,12 @@
       detectAdblock(),
       detectPCAdblock()
     ]).then(([primaryResult, pcResult]) => {
-      // Check if Brave browser is detected
+      // Check browser types
       const isBrave = !!(navigator.brave && navigator.brave.isBrave) || 
                      navigator.userAgent.includes('Brave') ||
                      (window.chrome && window.chrome.runtime && window.chrome.runtime.id === 'mnojpmjdmbbfmejpflffifhclcmipmro');
+      
+      const isChrome = navigator.userAgent.includes('Chrome') && !navigator.userAgent.includes('Brave');
       
       // For Brave browser, be more aggressive with detection
       let blocked = primaryResult || pcResult;
@@ -288,6 +296,26 @@
           // Brave's ad blocking is active
           blocked = true;
           log('Brave browser detected - AdBlock is ON');
+        }
+      } else if (isChrome) {
+        // For Chrome browser, be very conservative to avoid false positives
+        // Chrome doesn't have built-in ad blocking, so only redirect if we have strong evidence
+        if (primaryResult === false && pcResult === false) {
+          blocked = false;
+          log('Chrome browser - No AdBlock detected - staying on clean pages');
+        } else if (primaryResult === true || pcResult === true) {
+          // Only redirect if we have strong evidence of AdBlock extension
+          blocked = true;
+          log('Chrome browser - AdBlock extension detected - redirecting to ad-heavy pages');
+        }
+      } else {
+        // For other browsers, use normal detection logic
+        if (primaryResult === false && pcResult === false) {
+          blocked = false;
+          log('No AdBlock detected - staying on clean pages');
+        } else if (primaryResult === true || pcResult === true) {
+          blocked = true;
+          log('AdBlock detected - redirecting to ad-heavy pages');
         }
       }
       
