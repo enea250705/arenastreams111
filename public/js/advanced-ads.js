@@ -153,11 +153,19 @@
 
   // House ad insertion functions removed - no longer generating revenue
 
-  // Additional PC-specific detection
+  // Additional PC-specific detection (including Brave browser)
   function detectPCAdblock() {
     return new Promise((resolve) => {
-      // Check for common AdBlock extensions
+      // Check for common AdBlock extensions and Brave browser
       const adblockSigns = [
+        // Check for Brave browser (has built-in ad blocking)
+        () => {
+          const isBrave = !!(navigator.brave && navigator.brave.isBrave) || 
+                         navigator.userAgent.includes('Brave') ||
+                         (window.chrome && window.chrome.runtime && window.chrome.runtime.id === 'mnojpmjdmbbfmejpflffifhclcmipmro');
+          log('Brave browser detected:', isBrave);
+          return isBrave;
+        },
         // Check for AdBlock Plus
         () => typeof window.adblockplus !== 'undefined',
         // Check for uBlock Origin
@@ -176,14 +184,45 @@
           document.body.removeChild(testDiv);
           return isBlocked;
         },
-        // Check for blocked ad requests
+        // Check for blocked ad requests (multiple sources)
         () => {
           return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => resolve(false);
-            img.onerror = () => resolve(true);
-            img.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
-            setTimeout(() => resolve(false), 1000);
+            let blockedCount = 0;
+            let totalTests = 0;
+            const adUrls = [
+              'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js',
+              'https://googleads.g.doubleclick.net/pagead/ads',
+              'https://securepubads.g.doubleclick.net/gampad/ads'
+            ];
+            
+            adUrls.forEach(url => {
+              totalTests++;
+              const img = new Image();
+              img.onload = () => {
+                totalTests--;
+                if (totalTests === 0) resolve(blockedCount > 0);
+              };
+              img.onerror = () => {
+                blockedCount++;
+                totalTests--;
+                if (totalTests === 0) resolve(blockedCount > 0);
+              };
+              img.src = url;
+            });
+            
+            setTimeout(() => {
+              if (totalTests > 0) {
+                resolve(blockedCount > 0);
+              }
+            }, 2000);
+          });
+        },
+        // Check for blocked fetch requests
+        () => {
+          return new Promise((resolve) => {
+            fetch('/ads/test.js?ts=' + Date.now(), { method: 'HEAD' })
+              .then(() => resolve(false))
+              .catch(() => resolve(true));
           });
         }
       ];
@@ -231,8 +270,28 @@
       detectAdblock(),
       detectPCAdblock()
     ]).then(([primaryResult, pcResult]) => {
-      const blocked = primaryResult || pcResult;
-      log('Primary detection:', primaryResult, 'PC detection:', pcResult, 'Final:', blocked);
+      // Check if Brave browser is detected
+      const isBrave = !!(navigator.brave && navigator.brave.isBrave) || 
+                     navigator.userAgent.includes('Brave') ||
+                     (window.chrome && window.chrome.runtime && window.chrome.runtime.id === 'mnojpmjdmbbfmejpflffifhclcmipmro');
+      
+      // For Brave browser, be more aggressive with detection
+      let blocked = primaryResult || pcResult;
+      if (isBrave) {
+        // Brave has built-in ad blocking, but check if user disabled it
+        // If primary detection shows no blocking, user might have disabled Brave's ad blocking
+        if (primaryResult === false && pcResult === false) {
+          // User might have disabled Brave's ad blocking
+          log('Brave browser detected but no AdBlock detected - user may have disabled Brave ad blocking');
+          blocked = false;
+        } else {
+          // Brave's ad blocking is active
+          blocked = true;
+          log('Brave browser detected - AdBlock is ON');
+        }
+      }
+      
+      log('Primary detection:', primaryResult, 'PC detection:', pcResult, 'Brave detected:', isBrave, 'Final:', blocked);
       window.adConfig.adBlockDetected = !!blocked;
       log('AdBlock detection completed. Result:', blocked);
       log('Setting body class to:', blocked ? 'adblock-on' : 'adblock-off');
