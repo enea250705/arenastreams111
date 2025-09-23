@@ -17,62 +17,6 @@ handlebars.registerHelper('json', function(context) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// AdBlock tracking system
-const adblockStats = {
-  totalVisits: 0,
-  adblockVisits: 0,
-  cleanVisits: 0,
-  dailyStats: {},
-  lastReset: new Date().toISOString().split('T')[0]
-};
-
-// Reset daily stats if new day
-function resetDailyStatsIfNeeded() {
-  const today = new Date().toISOString().split('T')[0];
-  if (adblockStats.lastReset !== today) {
-    adblockStats.dailyStats = {};
-    adblockStats.lastReset = today;
-  }
-}
-
-// Track AdBlock visits
-function trackAdblockVisit(isAdblock) {
-  resetDailyStatsIfNeeded();
-  const today = new Date().toISOString().split('T')[0];
-  
-  adblockStats.totalVisits++;
-  if (isAdblock) {
-    adblockStats.adblockVisits++;
-    console.log(`🚫 AdBlock visit tracked - Total: ${adblockStats.totalVisits}, AdBlock: ${adblockStats.adblockVisits}`);
-  } else {
-    adblockStats.cleanVisits++;
-    console.log(`✅ Clean visit tracked - Total: ${adblockStats.totalVisits}, Clean: ${adblockStats.cleanVisits}`);
-  }
-  
-  if (!adblockStats.dailyStats[today]) {
-    adblockStats.dailyStats[today] = { adblock: 0, clean: 0 };
-  }
-  
-  if (isAdblock) {
-    adblockStats.dailyStats[today].adblock++;
-  } else {
-    adblockStats.dailyStats[today].clean++;
-  }
-  
-  console.log(`📊 Daily stats for ${today}:`, adblockStats.dailyStats[today]);
-}
-
-// Get AdBlock statistics
-function getAdblockStats() {
-  resetDailyStatsIfNeeded();
-  return {
-    ...adblockStats,
-    adblockPercentage: adblockStats.totalVisits > 0 ? 
-      Math.round((adblockStats.adblockVisits / adblockStats.totalVisits) * 100) : 0,
-    cleanPercentage: adblockStats.totalVisits > 0 ? 
-      Math.round((adblockStats.cleanVisits / adblockStats.totalVisits) * 100) : 0
-  };
-}
 
 
 // Advanced Security Headers for 11/10 SEO
@@ -158,31 +102,6 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
-// Serve a tiny 1x1 GIF at a common ad path so the adblock probe doesn't 404
-app.get('/ads/ad.gif', (req, res) => {
-  try {
-    const base64Gif = 'R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
-    const buf = Buffer.from(base64Gif, 'base64');
-    res.set({
-      'Content-Type': 'image/gif',
-      'Cache-Control': 'public, max-age=31536000, immutable'
-    });
-    res.end(buf);
-  } catch (e) {
-    res.status(204).end();
-  }
-});
-
-// Serve a test script for adblock detection
-app.get('/ads/test.js', (req, res) => {
-  res.set({
-    'Content-Type': 'application/javascript',
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'Pragma': 'no-cache',
-    'Expires': '0'
-  });
-  res.send('// Adblock detection test script\nwindow.adblockTest = true;');
-});
 
 // HTML minification middleware (after static, before routes)
 app.use(async (req, res, next) => {
@@ -226,12 +145,6 @@ app.get('/sw-custom.js', (req, res) => {
     res.sendFile(path.join(__dirname, 'sw-custom.js'));
 });
 
-// Serve adblock-specific service worker
-app.get('/sw.adblock.js', (req, res) => {
-  res.set('Content-Type', 'application/javascript');
-  res.set('Service-Worker-Allowed', '/');
-  res.sendFile(path.join(__dirname, 'sw.adblock.js'));
-});
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -240,7 +153,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Cache-busting middleware for Cloudflare Pages
 app.use((req, res, next) => {
   // Disable caching for HTML pages to ensure updates are visible
-  if (req.path === '/' || req.path.match(/^\/(football|basketball|tennis|ufc|rugby|baseball|american-football|cricket|motor-sports|admin|match|privacy|terms)(adblock)?$/)) {
+  if (req.path === '/' || req.path.match(/^\/(football|basketball|tennis|ufc|rugby|baseball|american-football|cricket|motor-sports|admin|match|privacy|terms)$/)) {
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
@@ -426,8 +339,6 @@ async function renderTemplate(templateName, data) {
 // Homepage route - API only with advanced SEO
 app.get('/', async (req, res) => {
   try {
-    // Track clean visit (no AdBlock)
-    trackAdblockVisit(false);
     
     const html = await renderTemplate('homepage', {
       sports: sportsData.map(s => s.name || s),
@@ -496,8 +407,6 @@ Object.keys(seoConfig.sports).forEach(sport => {
 // Match page route - fetch real data from Streamed.pk
 app.get('/match/:slug', async (req, res) => {
   try {
-    // Track clean visit (no AdBlock)
-    trackAdblockVisit(false);
     
     const { slug } = req.params;
     
@@ -831,8 +740,6 @@ app.get('/match/:slug', async (req, res) => {
 // Sport page routes
 app.get('/football', async (req, res) => {
   try {
-    // Track clean visit (no AdBlock)
-    trackAdblockVisit(false);
     
     const html = await renderTemplate('football', {});
     res.send(html);
@@ -844,8 +751,6 @@ app.get('/football', async (req, res) => {
 
 app.get('/basketball', async (req, res) => {
   try {
-    // Track clean visit (no AdBlock)
-    trackAdblockVisit(false);
     
     const html = await renderTemplate('basketball', {});
     res.send(html);
@@ -857,8 +762,6 @@ app.get('/basketball', async (req, res) => {
 
 app.get('/tennis', async (req, res) => {
   try {
-    // Track clean visit (no AdBlock)
-    trackAdblockVisit(false);
     
     const html = await renderTemplate('tennis', {});
     res.send(html);
@@ -870,8 +773,6 @@ app.get('/tennis', async (req, res) => {
 
 app.get('/ufc', async (req, res) => {
   try {
-    // Track clean visit (no AdBlock)
-    trackAdblockVisit(false);
     
     const html = await renderTemplate('ufc', {});
     res.send(html);
@@ -883,8 +784,6 @@ app.get('/ufc', async (req, res) => {
 
 app.get('/rugby', async (req, res) => {
   try {
-    // Track clean visit (no AdBlock)
-    trackAdblockVisit(false);
     
     const sport = seoConfig.sports.rugby;
     const html = await renderTemplate('rugby', {
@@ -912,8 +811,6 @@ app.get('/rugby', async (req, res) => {
 
 app.get('/baseball', async (req, res) => {
   try {
-    // Track clean visit (no AdBlock)
-    trackAdblockVisit(false);
     
     const html = await renderTemplate('baseball', {});
     res.send(html);
@@ -925,8 +822,6 @@ app.get('/baseball', async (req, res) => {
 
 app.get('/american-football', async (req, res) => {
   try {
-    // Track clean visit (no AdBlock)
-    trackAdblockVisit(false);
     
     const sport = seoConfig.sports['american-football'];
     const html = await renderTemplate('americanfootball', {
@@ -954,8 +849,6 @@ app.get('/american-football', async (req, res) => {
 
 app.get('/hockey', async (req, res) => {
   try {
-    // Track clean visit (no AdBlock)
-    trackAdblockVisit(false);
     
     const sport = seoConfig.sports.hockey;
     const html = await renderTemplate('hockey', {
@@ -981,235 +874,17 @@ app.get('/hockey', async (req, res) => {
   }
 });
 
-// AdBlock version routes - ad-heavy versions for AdBlock users
-app.get('/homepageadblock', async (req, res) => {
-  try {
-    // Track AdBlock visit
-    trackAdblockVisit(true);
-    
-    const html = await renderTemplate('homepageadblock', {
-      sports: sportsData.map(s => s.name || s),
-      timestamp: Date.now(),
-      seo: {
-        title: `${seoConfig.siteName} - Live Sports Streaming | Football, Basketball, Tennis, UFC - AdBlock Version`,
-        description: `${seoConfig.siteName} - Live sports streaming platform for football, basketball, tennis, UFC, rugby and baseball - AdBlock version with ads everywhere`,
-        keywords: 'live sports streaming, football, basketball, tennis, ufc, rugby, baseball, adblock version',
-        canonical: `${seoConfig.baseUrl}/homepageadblock`,
-        ogTitle: `${seoConfig.siteName} - Live Sports Streaming - AdBlock Version`,
-        ogDescription: 'Live sports streaming platform - AdBlock version with ads everywhere',
-        ogImage: `${seoConfig.baseUrl}/images/og-image.jpg`,
-        twitterCard: 'summary_large_image',
-        twitterTitle: `${seoConfig.siteName} - Live Sports Streaming - AdBlock Version`,
-        twitterDescription: 'Live sports streaming platform - AdBlock version with ads everywhere',
-        twitterImage: `${seoConfig.baseUrl}/images/og-image.jpg`
-      }
-    });
-    res.send(html);
-  } catch (error) {
-    console.error('Error rendering homepageadblock:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
 
-app.get('/footballadblock', async (req, res) => {
-  try {
-    // Track AdBlock visit
-    trackAdblockVisit(true);
-    
-    const html = await renderTemplate('footballadblock', {});
-    res.send(html);
-  } catch (error) {
-    console.error('Error rendering footballadblock page:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
 
-app.get('/basketballadblock', async (req, res) => {
-  try {
-    // Track AdBlock visit
-    trackAdblockVisit(true);
-    
-    const html = await renderTemplate('basketballadblock', {});
-    res.send(html);
-  } catch (error) {
-    console.error('Error rendering basketballadblock page:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
 
-app.get('/tennisadblock', async (req, res) => {
-  try {
-    // Track AdBlock visit
-    trackAdblockVisit(true);
-    
-    const html = await renderTemplate('tennisadblock', {});
-    res.send(html);
-  } catch (error) {
-    console.error('Error rendering tennisadblock page:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
 
-app.get('/ufcadblock', async (req, res) => {
-  try {
-    // Track AdBlock visit
-    trackAdblockVisit(true);
-    
-    const html = await renderTemplate('ufcadblock', {});
-    res.send(html);
-  } catch (error) {
-    console.error('Error rendering ufcadblock page:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
 
-app.get('/rugbyadblock', async (req, res) => {
-  try {
-    // Track AdBlock visit
-    trackAdblockVisit(true);
-    
-    const html = await renderTemplate('rugbyadblock', {});
-    res.send(html);
-  } catch (error) {
-    console.error('Error rendering rugbyadblock page:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
 
-app.get('/baseballadblock', async (req, res) => {
-  try {
-    // Track AdBlock visit
-    trackAdblockVisit(true);
-    
-    const html = await renderTemplate('baseballadblock', {});
-    res.send(html);
-  } catch (error) {
-    console.error('Error rendering baseballadblock page:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
 
-app.get('/american-footballadblock', async (req, res) => {
-  try {
-    // Track AdBlock visit
-    trackAdblockVisit(true);
-    
-    const sport = seoConfig.sports['american-football'];
-    const html = await renderTemplate('americanfootballadblock', {
-      sport: sport,
-      seo: {
-        title: `${sport.name} Live Streaming - ${seoConfig.siteName} (AdBlock Version)`,
-        description: sport.description + ' - AdBlock version with ads everywhere',
-        keywords: sport.keywords + ', adblock version, ads everywhere',
-        canonical: `${seoConfig.siteUrl}/american-footballadblock`,
-        ogTitle: `${sport.name} Live Streaming - ${seoConfig.siteName} (AdBlock Version)`,
-        ogDescription: sport.description + ' - AdBlock version with ads everywhere',
-        ogImage: sport.image,
-        twitterCard: 'summary_large_image',
-        twitterTitle: `${sport.name} Live Streaming - ${seoConfig.siteName} (AdBlock Version)`,
-        twitterDescription: sport.description + ' - AdBlock version with ads everywhere',
-        twitterImage: sport.image
-      }
-    });
-    res.send(html);
-  } catch (error) {
-    console.error('Error rendering american-footballadblock page:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
 
-app.get('/cricketadblock', async (req, res) => {
-  try {
-    // Track AdBlock visit
-    trackAdblockVisit(true);
-    
-    const sport = seoConfig.sports['cricket'];
-    const html = await renderTemplate('cricketadblock', {
-      sport: sport,
-      seo: {
-        title: `${sport.name} Live Streaming - ${seoConfig.siteName} (AdBlock Version)`,
-        description: sport.description + ' - AdBlock version with ads everywhere',
-        keywords: sport.keywords + ', adblock version',
-        canonical: `${seoConfig.siteUrl}/cricketadblock`,
-        ogTitle: `${sport.name} Live Streaming - ${seoConfig.siteName} (AdBlock Version)`,
-        ogDescription: sport.description + ' - AdBlock version with ads everywhere',
-        ogImage: sport.image,
-        twitterCard: 'summary_large_image',
-        twitterTitle: `${sport.name} Live Streaming - ${seoConfig.siteName} (AdBlock Version)`,
-        twitterDescription: sport.description + ' - AdBlock version with ads everywhere',
-        twitterImage: sport.image
-      }
-    });
-    res.send(html);
-  } catch (error) {
-    console.error('Error rendering cricketadblock page:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
 
-app.get('/motorsportsadblock', async (req, res) => {
-  try {
-    // Track AdBlock visit
-    trackAdblockVisit(true);
-    
-    const sport = seoConfig.sports['motor-sports'];
-    const html = await renderTemplate('motor-sportsadblock', {
-      sport: sport,
-      seo: {
-        title: `${sport.name} Live Streaming - ${seoConfig.siteName} (AdBlock Version)`,
-        description: sport.description + ' - AdBlock version with ads everywhere',
-        keywords: sport.keywords + ', adblock version',
-        canonical: `${seoConfig.siteUrl}/motorsportsadblock`,
-        ogTitle: `${sport.name} Live Streaming - ${seoConfig.siteName} (AdBlock Version)`,
-        ogDescription: sport.description + ' - AdBlock version with ads everywhere',
-        ogImage: sport.image,
-        twitterCard: 'summary_large_image',
-        twitterTitle: `${sport.name} Live Streaming - ${seoConfig.siteName} (AdBlock Version)`,
-        twitterDescription: sport.description + ' - AdBlock version with ads everywhere',
-        twitterImage: sport.image
-      }
-    });
-    res.send(html);
-  } catch (error) {
-    console.error('Error rendering motorsportsadblock page:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
 
-app.get('/hockeyadblock', async (req, res) => {
-  try {
-    // Track AdBlock visit
-    trackAdblockVisit(true);
-    
-    const sport = seoConfig.sports.hockey;
-    const html = await renderTemplate('hockeyadblock', {
-      sport: sport,
-      seo: {
-        title: `${sport.name} Live Streaming - ${seoConfig.siteName} (AdBlock Version)`,
-        description: sport.description + ' - AdBlock version with ads everywhere',
-        keywords: sport.keywords + ', adblock version',
-        canonical: `${seoConfig.siteUrl}/hockeyadblock`,
-        ogTitle: `${sport.name} Live Streaming - ${seoConfig.siteName} (AdBlock Version)`,
-        ogDescription: sport.description + ' - AdBlock version with ads everywhere',
-        ogImage: sport.image,
-        twitterCard: 'summary_large_image',
-        twitterTitle: `${sport.name} Live Streaming - ${seoConfig.siteName} (AdBlock Version)`,
-        twitterDescription: sport.description + ' - AdBlock version with ads everywhere',
-        twitterImage: sport.image
-      }
-    });
-    res.send(html);
-  } catch (error) {
-    console.error('Error rendering hockeyadblock page:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
 
-// AdBlock match page route
-app.get('/matchadblock/:slug', async (req, res) => {
-  try {
-    // Track AdBlock visit
-    trackAdblockVisit(true);
     
     const { slug } = req.params;
     console.log(`🔍 Loading AdBlock match page for slug: ${slug}`);
@@ -2039,33 +1714,7 @@ app.get('/terms', async (req, res) => {
   }
 });
 
-// API endpoint for client to track AdBlock status
-app.post('/api/track-adblock', (req, res) => {
-  try {
-    const { adblock, page, timestamp } = req.body;
-    console.log(`📊 Client tracking AdBlock status: ${adblock ? 'ON' : 'OFF'} on page: ${page}`);
-    
-    // Track the visit
-    trackAdblockVisit(adblock);
-    
-    res.json({ success: true, tracked: true });
-  } catch (error) {
-    console.error('Error tracking AdBlock status:', error);
-    res.status(500).json({ error: 'Failed to track AdBlock status' });
-  }
-});
 
-// API endpoint for admin to get AdBlock statistics
-app.get('/api/admin/adblock-stats', (req, res) => {
-  try {
-    const stats = getAdblockStats();
-    console.log('📊 AdBlock stats requested:', stats);
-    res.json(stats);
-  } catch (error) {
-    console.error('Error getting AdBlock stats:', error);
-    res.status(500).json({ error: 'Failed to get AdBlock statistics' });
-  }
-});
 
 // Initialize data and start server
 initializeData().then(() => {
