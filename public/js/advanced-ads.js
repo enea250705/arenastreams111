@@ -26,18 +26,33 @@
     document.head.appendChild(style);
   }
 
-  function detectAdblock(timeoutMs = 1200) {
+  function detectAdblock(timeoutMs = 1500) {
     return new Promise((resolve) => {
       let done = false;
       let networkBlocked = false;
       let imageLoaded = false;
       let scriptBlocked = false;
+      let baitBlocked = false;
+      let multipleBaitBlocked = false;
 
-      // Bait element test
-      const bait = document.createElement('div');
-      bait.className = 'ads ad adsbox sponsor advertisement ad-banner';
-      bait.style.cssText = 'position:absolute; left:-9999px; width:1px; height:1px;';
-      document.body.appendChild(bait);
+      // Multiple bait element tests for better detection
+      const baitElements = [];
+      const baitClasses = [
+        'ads ad adsbox sponsor advertisement ad-banner',
+        'advertisement ads ad-banner',
+        'adsbox ad-container',
+        'sponsored-content ad'
+      ];
+
+      // Create multiple bait elements
+      baitClasses.forEach((className, index) => {
+        const bait = document.createElement('div');
+        bait.className = className;
+        bait.style.cssText = 'position:absolute; left:-9999px; width:1px; height:1px; visibility:hidden;';
+        bait.id = `ad-bait-${index}`;
+        document.body.appendChild(bait);
+        baitElements.push(bait);
+      });
 
       // Network probe to a common ad path we serve
       const img = new Image();
@@ -63,19 +78,71 @@
       script.src = '/ads/test.js?ts=' + Date.now();
       document.head.appendChild(script);
 
+      // Additional detection methods
+      let fetchBlocked = false;
+      try {
+        fetch('/ads/test.js?ts=' + Date.now(), { method: 'HEAD' })
+          .then(() => log('Fetch probe successful'))
+          .catch(() => {
+            fetchBlocked = true;
+            log('Fetch probe blocked');
+          });
+      } catch(e) {
+        fetchBlocked = true;
+        log('Fetch probe failed');
+      }
+
       setTimeout(function() {
         if (done) return;
-        const blockedByStyle = getComputedStyle(bait).display === 'none' || bait.offsetParent === null || bait.offsetHeight === 0;
-        try { document.body.removeChild(bait); } catch(e) {}
         done = true;
         
+        // Check bait elements
+        let blockedBaitCount = 0;
+        baitElements.forEach((bait, index) => {
+          try {
+            const computedStyle = getComputedStyle(bait);
+            const isHidden = computedStyle.display === 'none' || 
+                           computedStyle.visibility === 'hidden' ||
+                           bait.offsetParent === null || 
+                           bait.offsetHeight === 0 ||
+                           bait.offsetWidth === 0;
+            
+            if (isHidden) {
+              blockedBaitCount++;
+              log(`Bait element ${index} blocked`);
+            }
+            document.body.removeChild(bait);
+          } catch(e) {
+            log(`Error checking bait element ${index}:`, e);
+          }
+        });
+
         // Clean up script probe
         try { document.head.removeChild(script); } catch(e) {}
         
-        log('Detection results:', { blockedByStyle, networkBlocked, imageLoaded, scriptBlocked });
+        // Calculate detection results
+        baitBlocked = blockedBaitCount > 0;
+        multipleBaitBlocked = blockedBaitCount >= 2;
         
-        // Strict detection: require style bait to be hidden AND (network OR script blocked)
-        const isBlocked = !!(blockedByStyle && (networkBlocked || !imageLoaded || scriptBlocked));
+        log('Detection results:', { 
+          blockedBaitCount, 
+          baitBlocked, 
+          multipleBaitBlocked,
+          networkBlocked, 
+          imageLoaded, 
+          scriptBlocked,
+          fetchBlocked 
+        });
+        
+        // More aggressive detection for PC AdBlockers
+        // If any bait is blocked OR network/script is blocked, consider it AdBlock
+        const isBlocked = !!(baitBlocked || networkBlocked || scriptBlocked || fetchBlocked);
+        
+        // Extra check: if multiple baits are blocked, definitely AdBlock
+        if (multipleBaitBlocked) {
+          log('Multiple bait elements blocked - definitely AdBlock');
+        }
+        
         log('Final AdBlock detection:', isBlocked);
         resolve(isBlocked);
       }, timeoutMs);
@@ -86,11 +153,86 @@
 
   // House ad insertion functions removed - no longer generating revenue
 
+  // Additional PC-specific detection
+  function detectPCAdblock() {
+    return new Promise((resolve) => {
+      // Check for common AdBlock extensions
+      const adblockSigns = [
+        // Check for AdBlock Plus
+        () => typeof window.adblockplus !== 'undefined',
+        // Check for uBlock Origin
+        () => typeof window.ubo !== 'undefined',
+        // Check for AdGuard
+        () => typeof window.adguard !== 'undefined',
+        // Check for Ghostery
+        () => typeof window.ghostery !== 'undefined',
+        // Check for common AdBlock CSS classes
+        () => {
+          const testDiv = document.createElement('div');
+          testDiv.className = 'adsbox';
+          testDiv.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;';
+          document.body.appendChild(testDiv);
+          const isBlocked = getComputedStyle(testDiv).display === 'none';
+          document.body.removeChild(testDiv);
+          return isBlocked;
+        },
+        // Check for blocked ad requests
+        () => {
+          return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(false);
+            img.onerror = () => resolve(true);
+            img.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
+            setTimeout(() => resolve(false), 1000);
+          });
+        }
+      ];
+
+      let detectionCount = 0;
+      let blockedCount = 0;
+
+      adblockSigns.forEach((check, index) => {
+        try {
+          if (typeof check === 'function') {
+            const result = check();
+            if (result instanceof Promise) {
+              result.then(isBlocked => {
+                detectionCount++;
+                if (isBlocked) blockedCount++;
+                if (detectionCount === adblockSigns.length) {
+                  resolve(blockedCount > 0);
+                }
+              });
+            } else {
+              detectionCount++;
+              if (result) blockedCount++;
+              if (detectionCount === adblockSigns.length) {
+                resolve(blockedCount > 0);
+              }
+            }
+          }
+        } catch(e) {
+          detectionCount++;
+          if (detectionCount === adblockSigns.length) {
+            resolve(blockedCount > 0);
+          }
+        }
+      });
+    });
+  }
+
   function init() {
     // Expose minimal config
     window.adConfig = window.adConfig || {};
     log('Starting AdBlock detection...');
-    detectAdblock().then(blocked => {
+    
+    // Run both detection methods
+    Promise.all([
+      detectAdblock(),
+      detectPCAdblock()
+    ]).then(([primaryResult, pcResult]) => {
+      const blocked = primaryResult || pcResult;
+      log('Primary detection:', primaryResult, 'PC detection:', pcResult, 'Final:', blocked);
       window.adConfig.adBlockDetected = !!blocked;
       log('AdBlock detection completed. Result:', blocked);
       log('Setting body class to:', blocked ? 'adblock-on' : 'adblock-off');
