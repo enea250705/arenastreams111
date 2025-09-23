@@ -136,7 +136,18 @@
         
         // More precise detection - require multiple indicators for AdBlock
         // This prevents false positives on browsers like Chrome that don't block ads
-        const isBlocked = !!(multipleBaitBlocked || (baitBlocked && (networkBlocked || scriptBlocked)) || fetchBlocked);
+        // Be more strict on desktop devices where false positives are more common
+        const isDesktop = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && 
+                         window.innerWidth > 768;
+        
+        let isBlocked;
+        if (isDesktop) {
+          // On desktop, require stronger evidence to avoid false positives
+          isBlocked = !!(multipleBaitBlocked || (baitBlocked && networkBlocked && scriptBlocked) || fetchBlocked);
+        } else {
+          // On mobile, use normal detection (mobile works fine)
+          isBlocked = !!(multipleBaitBlocked || (baitBlocked && (networkBlocked || scriptBlocked)) || fetchBlocked);
+        }
         
         // Extra check: if multiple baits are blocked, definitely AdBlock
         if (multipleBaitBlocked) {
@@ -276,12 +287,18 @@
       detectAdblock(),
       detectPCAdblock()
     ]).then(([primaryResult, pcResult]) => {
-      // Check browser types
+      // Check browser types and device type
       const isBrave = !!(navigator.brave && navigator.brave.isBrave) || 
                      navigator.userAgent.includes('Brave') ||
                      (window.chrome && window.chrome.runtime && window.chrome.runtime.id === 'mnojpmjdmbbfmejpflffifhclcmipmro');
       
       const isChrome = navigator.userAgent.includes('Chrome') && !navigator.userAgent.includes('Brave');
+      
+      // Check if it's a desktop/PC device
+      const isDesktop = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && 
+                       window.innerWidth > 768;
+      
+      log('Device type - Desktop:', isDesktop, 'Mobile:', !isDesktop);
       
       // For Brave browser, be more aggressive with detection
       let blocked = primaryResult || pcResult;
@@ -297,25 +314,43 @@
           blocked = true;
           log('Brave browser detected - AdBlock is ON');
         }
-      } else if (isChrome) {
-        // For Chrome browser, be very conservative to avoid false positives
+      } else if (isChrome && isDesktop) {
+        // For Chrome on desktop, be very conservative to avoid false positives
         // Chrome doesn't have built-in ad blocking, so only redirect if we have strong evidence
         if (primaryResult === false && pcResult === false) {
           blocked = false;
-          log('Chrome browser - No AdBlock detected - staying on clean pages');
+          log('Chrome desktop - No AdBlock detected - staying on clean pages');
         } else if (primaryResult === true || pcResult === true) {
           // Only redirect if we have strong evidence of AdBlock extension
           blocked = true;
-          log('Chrome browser - AdBlock extension detected - redirecting to ad-heavy pages');
+          log('Chrome desktop - AdBlock extension detected - redirecting to ad-heavy pages');
         }
-      } else {
-        // For other browsers, use normal detection logic
+      } else if (isChrome && !isDesktop) {
+        // For Chrome on mobile, use normal detection (mobile works fine)
         if (primaryResult === false && pcResult === false) {
           blocked = false;
-          log('No AdBlock detected - staying on clean pages');
+          log('Chrome mobile - No AdBlock detected - staying on clean pages');
         } else if (primaryResult === true || pcResult === true) {
           blocked = true;
-          log('AdBlock detected - redirecting to ad-heavy pages');
+          log('Chrome mobile - AdBlock detected - redirecting to ad-heavy pages');
+        }
+      } else if (isDesktop) {
+        // For other desktop browsers, be more conservative to avoid false positives
+        if (primaryResult === false && pcResult === false) {
+          blocked = false;
+          log('Desktop browser - No AdBlock detected - staying on clean pages');
+        } else if (primaryResult === true || pcResult === true) {
+          blocked = true;
+          log('Desktop browser - AdBlock detected - redirecting to ad-heavy pages');
+        }
+      } else {
+        // For mobile browsers, use normal detection logic (mobile works fine)
+        if (primaryResult === false && pcResult === false) {
+          blocked = false;
+          log('Mobile browser - No AdBlock detected - staying on clean pages');
+        } else if (primaryResult === true || pcResult === true) {
+          blocked = true;
+          log('Mobile browser - AdBlock detected - redirecting to ad-heavy pages');
         }
       }
       
